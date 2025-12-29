@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayLink | لوحة التحكم المالية</title>
+    
+    <!-- 1. EXTERNAL RESOURCES (Fonts, Icons, Map Engine) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- 2. CSS STYLING -->
+    <style>
+        /* --- VARIABLES (The Facebook Blue Theme) --- */
+        :root {
+            --primary: #1877F2;       /* Facebook Blue */
+            --primary-hover: #166fe5;
+            --bg-body: #F0F2F5;       /* Light Gray Background */
+            --bg-card: #FFFFFF;
+            --text-main: #050505;
+            --text-muted: #65676B;
+            --green: #42b72a;
+            --red: #f02849;
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0,0,0,0.05);
+            --radius: 12px;
+        }
+
+        /* --- RESET & BASE --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
+        
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden; /* Prevent full body scroll, scroll inside panels instead */
+        }
+
+        /* --- LAYOUT: SIDEBAR --- */
+        aside.sidebar {
+            width: 280px;
+            background: var(--bg-card);
+            box-shadow: 2px 0 12px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            z-index: 1000;
+        }
+
+        .brand {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-menu { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 16px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            border-radius: var(--radius);
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background-color: #E7F3FF;
+            color: var(--primary);
+        }
+
+        /* --- LAYOUT: MAIN CONTENT --- */
+        main.content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* Header */
+        header { display: flex; justify-content: space-between; align-items: center; }
+        h2.page-title { font-size: 26px; font-weight: 800; }
+        
+        .user-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-card);
+            padding: 8px 16px;
+            border-radius: 50px;
+            box-shadow: var(--shadow);
+        }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: #ddd; }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr; /* 66% Map, 33% List */
+            gap: 24px;
+            height: 100%; /* Fill remaining space */
+        }
+
+        /* Card Styles */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* MAP SECTION (Left) */
+        .map-card { position: relative; }
+        
+        .transaction-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-card);
+            padding: 15px 20px;
+            border-radius: var(--radius);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            z-index: 500; /* Above Map */
+            width: 280px;
+            border-right: 4px solid var(--primary);
+        }
+
+        #map { width: 100%; height: 100%; min-height: 400px; background: #ddd; }
+
+        /* LIST SECTION (Right) */
+        .list-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .transaction-list {
+            overflow-y: auto;
+            flex: 1;
+            max-height: 600px;
+        }
+
+        .t-row {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f2f5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .t-row:hover { background-color: #fafafa; }
+        .t-row.active { background-color: #E7F3FF; border-right: 3px solid var(--primary); }
+
+        .t-data { display: flex; gap: 10px; align-items: center; }
+        .t-icon { 
+            width: 40px; height: 40px; border-radius: 50%; background: #F0F2F5; 
+            display: flex; align-items: center; justify-content: center; color: var(--text-muted); 
+        }
+        .t-details h4 { font-size: 14px; margin-bottom: 2px; }
+        .t-details small { font-size: 11px; color: var(--text-muted); }
+        .t-price { font-weight: 700; font-size: 14px; direction: ltr; }
+
+        /* --- RESPONSIVE (Mobile) --- */
+        @media (max-width: 900px) {
+            body { flex-direction: column; height: auto; overflow: auto; }
+            aside.sidebar { display: none; } /* Use a bottom nav for real mobile apps */
+            main.content { padding: 15px; }
+            .dashboard-grid { grid-template-columns: 1fr; display: flex; flex-direction: column-reverse; }
+            .map-card { height: 350px; }
+            .transaction-overlay { width: 90%; left: 5%; right: 5%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand">
+            <i class="fa-solid fa-layer-group"></i> PayLink
+        </div>
+        <nav>
+            <ul class="nav-menu">
+                <li><a href="#" class="nav-item active"><i class="fa-solid fa-chart-pie"></i> نظرة عامة</a></li>
+                <li><a href="#" class="nav-item"><i class="fa-solid fa-map"></i> خريطة المعاملات</a></li>
+                <li><a href="#" class="nav-item"><i class="fa-solid fa-wallet"></i> المحفظة</a></li>
+                <li><a href="#" class="nav-item"><i class="fa-solid fa-user-shield"></i> الأمان</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="content">
+        <header>
+            <h2 class="page-title">مراقبة المعاملات</h2>
+            <div class="user-card">
+                <div class="user-avatar" style="background-image: url('https://ui-avatars.com/api/?name=Admin&background=1877F2&color=fff'); background-size: cover;"></div>
+                <span style="font-weight: 600; font-size: 14px;">المدير العام</span>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            
+            <!-- 1. INTERACTIVE MAP -->
+            <div class="card map-card">
+                <!-- Floating Detail Card (Updates on Click) -->
+                <div class="transaction-overlay" id="overlayPanel">
+                    <h4 style="color:var(--text-muted); font-size:12px;">تفاصيل المعاملة</h4>
+                    <h2 id="ov-price" style="color:var(--primary); margin: 5px 0;">--</h2>
+                    <p id="ov-merchant" style="font-weight:bold;">اختر معاملة</p>
+                    <p id="ov-date" style="font-size:12px; color:var(--text-muted);">--</p>
+                </div>
+                <!-- The Map Engine -->
+                <div id="map"></div>
+            </div>
+
+            <!-- 2. TRANSACTION LIST -->
+            <div class="card list-card">
+                <div class="list-header">آخر النشاطات</div>
+                <div class="transaction-list" id="transactions-container">
+                    <!-- Items injected by JS -->
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 3. JAVASCRIPT LOGIC -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // --- A. DATA SET (Mock Database) ---
+        const transactions = [
+            { id: 101, merchant: "ستاربكس - التجمع", price: "- 145.00 EGP", date: "منذ 10 دقائق", icon: "fa-mug-hot", lat: 30.0305, lng: 31.4080, type: "out" },
+            { id: 102, merchant: "إيداع بنكي CIB", price: "+ 5,000 EGP", date: "منذ ساعة", icon: "fa-building-columns", lat: 30.0444, lng: 31.2357, type: "in" },
+            { id: 103, merchant: "أوبر - رحلة", price: "- 65.50 EGP", date: "أمس, 9:00 م", icon: "fa-car", lat: 30.0131, lng: 31.2089, type: "out" },
+            { id: 104, merchant: "كارفور المعادي", price: "- 1,200 EGP", date: "28 ديسمبر", icon: "fa-cart-shopping", lat: 29.9668, lng: 31.2489, type: "out" },
+            { id: 105, merchant: "ماكدونالدز سان ستيفانو", price: "- 210.00 EGP", date: "27 ديسمبر", icon: "fa-burger", lat: 31.2447, lng: 29.9642, type: "out" }
+        ];
+
+        // --- B. MAP INITIALIZATION ---
+        // Center Map on Egypt (Cairo)
+        const map = L.map('map').setView([30.0444, 31.2357], 12);
+        
+        // Add "Tile Layer" (The actual map images from OpenStreetMap)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap Contributors'
+        }).addTo(map);
+
+        let currentMarker = null;
+
+        // --- C. RENDER LIST FUNCTION ---
+        const container = document.getElementById('transactions-container');
+
+        transactions.forEach((tx, index) => {
+            // 1. Create HTML Element
+            const el = document.createElement('div');
+            el.className = 't-row';
+            if(index === 0) el.classList.add('active'); // Highlight first one
+
+            // 2. Determine Color (Green for Income, Red for Expense)
+            const color = tx.type === 'in' ? 'var(--green)' : 'var(--text-main)';
+            
+            // 3. Fill HTML
+            el.innerHTML = `
+                <div class="t-data">
+                    <div class="t-icon"><i class="fa-solid ${tx.icon}"></i></div>
+                    <div class="t-details">
+                        <h4>${tx.merchant}</h4>
+                        <small>${tx.date}</small>
+                    </div>
+                </div>
+                <div class="t-price" style="color: ${color}">${tx.price}</div>
+            `;
+
+            // 4. Add Click Event
+            el.addEventListener('click', () => {
+                // Remove 'active' from all rows
+                document.querySelectorAll('.t-row').forEach(r => r.classList.remove('active'));
+                // Add 'active' to this row
+                el.classList.add('active');
+                // Trigger Map Update
+                updateDashboard(tx);
+            });
+
+            container.appendChild(el);
+        });
+
+        // --- D. UPDATE DASHBOARD FUNCTION ---
+        function updateDashboard(tx) {
+            // 1. Update Overlay Text
+            document.getElementById('ov-price').innerText = tx.price;
+            document.getElementById('ov-price').style.color = tx.type === 'in' ? 'var(--green)' : 'var(--primary)';
+            document.getElementById('ov-merchant').innerText = tx.merchant;
+            document.getElementById('ov-date').innerText = tx.date;
+
+            // 2. Fly to Location on Map
+            map.flyTo([tx.lat, tx.lng], 14, { duration: 1.5 });
+
+            // 3. Move Pin
+            if(currentMarker) map.removeLayer(currentMarker);
+            currentMarker = L.marker([tx.lat, tx.lng]).addTo(map)
+                .bindPopup(`<b>${tx.merchant}</b><br>${tx.price}`)
+                .openPopup();
+        }
+
+        // Run once on load for the first item
+        updateDashboard(transactions[0]);
+
+    </script>
+</body>
+</html>
