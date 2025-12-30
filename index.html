@@ -1,74 +1,95 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PayLink | لوحة التحكم المالية</title>
-    
-    <!-- المصادر الخارجية (الخطوط، الأيقونات، الخرائط) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <title>PayTrack | Transaction Location Dashboard</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
+    
     <!-- ربط ملف التنسيق الخارجي -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- القائمة الجانبية -->
-    <aside class="sidebar">
+    <!-- Top Navigation -->
+    <nav class="navbar">
         <div class="brand">
-            <i class="fa-solid fa-layer-group"></i> PayLink
+            <i class="fa-solid fa-wallet"></i> PayTrack
         </div>
-        <nav>
-            <ul class="nav-menu">
-                <li><a href="#" class="nav-item active"><i class="fa-solid fa-chart-pie"></i> نظرة عامة</a></li>
-                <li><a href="#" class="nav-item"><i class="fa-solid fa-map"></i> خريطة المعاملات</a></li>
-                <li><a href="#" class="nav-item"><i class="fa-solid fa-wallet"></i> المحفظة</a></li>
-                <li><a href="#" class="nav-item"><i class="fa-solid fa-user-shield"></i> الأمان</a></li>
-            </ul>
-        </nav>
-    </aside>
+        <div class="user-profile">
+            <span style="font-size: 14px; font-weight: 500;">Admin User</span>
+            <div class="avatar">AU</div>
+        </div>
+    </nav>
 
-    <!-- المحتوى الرئيسي -->
-    <main class="content">
-        <header>
-            <h2 class="page-title">مراقبة المعاملات</h2>
-            <div class="user-card">
-                <div class="user-avatar" style="background-image: url('https://ui-avatars.com/api/?name=Admin&background=1877F2&color=fff'); background-size: cover;"></div>
-                <span style="font-weight: 600; font-size: 14px;">المدير العام</span>
-            </div>
-        </header>
-
-        <div class="dashboard-grid">
-            
-            <!-- قسم الخريطة -->
-            <div class="card map-card">
-                <!-- كارت التفاصيل العائم -->
-                <div class="transaction-overlay" id="overlayPanel">
-                    <h4 style="color:var(--text-muted); font-size:12px;">تفاصيل المعاملة</h4>
-                    <h2 id="ov-price" style="color:var(--primary); margin: 5px 0;">--</h2>
-                    <p id="ov-merchant" style="font-weight:bold;">اختر معاملة</p>
-                    <p id="ov-date" style="font-size:12px; color:var(--text-muted);">--</p>
+    <div class="container">
+        <!-- Sidebar: Filter & History -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>Transactions</h3>
+                <div class="filter-bar">
+                    <span class="badge active" onclick="filterTransactions('All', this)">All</span>
+                    <span class="badge" onclick="filterTransactions('Success', this)">Success</span>
+                    <span class="badge" onclick="filterTransactions('Pending', this)">Pending</span>
                 </div>
-                <!-- عنصر الخريطة -->
+            </div>
+            <div class="transaction-list" id="transactionList">
+                <!-- Items injected via JS -->
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-panel">
+            
+            <!-- Details Card with Buttons -->
+            <div class="details-card">
+                <div class="details-grid">
+                    <div class="detail-group">
+                        <span class="label">Amount</span>
+                        <span class="value amount-large" id="d-amount">$0.00</span>
+                    </div>
+                    <div class="detail-group">
+                        <span class="label">Merchant</span>
+                        <span class="value" id="d-merchant">-</span>
+                    </div>
+                    <div class="detail-group">
+                        <span class="label">Tx ID</span>
+                        <span class="value" id="d-id">#-----</span>
+                    </div>
+                    <div class="detail-group">
+                        <span class="label">Date</span>
+                        <span class="value" id="d-date">-</span>
+                    </div>
+                    <div class="detail-group">
+                        <span class="label">Status</span>
+                        <span id="d-status" class="status-pill pill-success">--</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="actions-bar">
+                    <button class="btn btn-primary" onclick="printReceipt()">
+                        <i class="fa-solid fa-print"></i> Print Receipt
+                    </button>
+                    <button class="btn btn-outline" onclick="shareTransaction()">
+                        <i class="fa-solid fa-share-nodes"></i> Share Details
+                    </button>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div class="map-container">
                 <div id="map"></div>
             </div>
+        </main>
+    </div>
 
-            <!-- قائمة المعاملات -->
-            <div class="card list-card">
-                <div class="list-header">آخر النشاطات</div>
-                <div class="transaction-list" id="transactions-container">
-                    <!-- سيتم إضافة العناصر هنا بواسطة الجافاسكربت -->
-                </div>
-            </div>
-
-        </div>
-    </main>
-
-    <!-- مكتبة الخرائط -->
+    <!-- Leaflet JS Library -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <!-- ربط ملف الجافاسكربت الخاص بنا -->
